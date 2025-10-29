@@ -1,0 +1,69 @@
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, ContextTypes
+from fastapi import FastAPI
+import uvicorn
+import os
+
+BOT_TOKEN = "8082878559:AAEJ4MRXAVBBEp1mBv7hARh9NgIghmwVPuk" 
+
+GROUP_LINKS = [
+    ("GROUP 1 - All in One", "https://t.me/allinonemadox"),
+    ("GROUP 2 - Hot Girl Video", "https://t.me/hotgirlvideomadox"),
+    ("GROUP 3 - Tiktoker Viral", "https://t.me/tiktokervirallinkmadox"),
+    ("GROUP 4 - Viral Link Update", "https://t.me/virallinkupdatemadox"),
+    ("GROUP 5 - Deshi Viral Link", "https://t.me/deshivirallinkmadox"),
+]
+
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    
+    keyboard_buttons = []
+    for name, url in GROUP_LINKS:
+        button = InlineKeyboardButton(name, url=url)
+        keyboard_buttons.append([button])
+        
+    reply_markup = InlineKeyboardMarkup(keyboard_buttons)
+
+    await update.message.reply_text(
+        "👋 **Welcome!**\n\nClick the buttons below to join our public groups:",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+app = FastAPI()
+application = Application.builder().token(BOT_TOKEN).build()
+application.add_handler(CommandHandler("start", start_command))
+
+
+@app.post("/")
+async def telegram_webhook(update: dict):
+    try:
+        await application.update_queue.put(Update.de_json(update, application.bot))
+    except Exception as e:
+        print(f"Error processing update: {e}")
+        return {"status": "error", "message": str(e)}
+    
+    return {"status": "ok"}
+
+
+@app.on_event("startup")
+async def startup_event():
+    
+    WEBHOOK_URL = os.getenv("RENDER_EXTERNAL_URL", None)
+    
+    if WEBHOOK_URL:
+        webhook_url_with_secret = f"{WEBHOOK_URL}"
+        
+        print(f"Setting webhook to: {webhook_url_with_secret}")
+        await application.bot.set_webhook(url=webhook_url_with_secret)
+        
+        await application.start()
+        
+    else:
+        print("Error: RENDER_EXTERNAL_URL environment variable is not set. Cannot set webhook.")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    print("Shutting down the Telegram bot application.")
+    await application.stop()
+    await application.shutdown()
