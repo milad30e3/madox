@@ -4,6 +4,8 @@ from fastapi import FastAPI
 import uvicorn
 import os
 
+# --- 1. Your Bot Token and Group Links ---
+# You must set your actual BOT_TOKEN as an environment variable (e.g., on Render).
 BOT_TOKEN = "8082878559:AAEJ4MRXAVBBEp1mBv7hARh9NgIghmwVPuk" 
 
 GROUP_LINKS = [
@@ -14,6 +16,7 @@ GROUP_LINKS = [
     ("GROUP 5 - Deshi Viral Link", "https://t.me/deshivirallinkmadox"),
 ]
 
+# --- 2. /start Command Handler ---
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     
     keyboard_buttons = []
@@ -29,6 +32,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         parse_mode='Markdown'
     )
 
+# --- 3. Webhook Setup for Hosting ---
 app = FastAPI()
 application = Application.builder().token(BOT_TOKEN).build()
 application.add_handler(CommandHandler("start", start_command))
@@ -47,11 +51,15 @@ async def telegram_webhook(update: dict):
 
 @app.on_event("startup")
 async def startup_event():
+    """Sets the webhook URL and initializes the application when the server starts."""
     
     WEBHOOK_URL = os.getenv("RENDER_EXTERNAL_URL", None)
     
     if WEBHOOK_URL:
         webhook_url_with_secret = f"{WEBHOOK_URL}"
+        
+        # 🟢 Runtime Error fix: Application must be initialized before starting
+        await application.initialize() 
         
         print(f"Setting webhook to: {webhook_url_with_secret}")
         await application.bot.set_webhook(url=webhook_url_with_secret)
